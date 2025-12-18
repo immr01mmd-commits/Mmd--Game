@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<title>Mine Legends Ultimate</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+body {margin:0; font-family:sans-serif; background:#0a0f23; color:white; display:flex; justify-content:center; align-items:center; min-height:100vh;}
+.app {width:100%; max-width:420px; background:#121b38; border-radius:20px; padding:14px;}
+.stats {display:flex; justify-content:space-between; background:#0a0f23; padding:10px; border-radius:12px;}
+.char {text-align:center; font-size:48px; margin-top:6px;}
+.mine {width:160px; height:160px; border-radius:50%; background:radial-gradient(#22c55e,#166534); margin:12px auto; display:flex; justify-content:center; align-items:center; font-size:44px; cursor:pointer;}
+.tabs {display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;}
+.tabs button {flex:1; border:none; border-radius:10px; padding:6px; background:#1e293b; color:white; cursor:pointer; min-width:60px;}
+.box {display:none; margin-top:8px;}
+.box.active {display:block;}
+.card {background:#1e293b; border-radius:12px; padding:10px; margin-bottom:6px;}
+button {border:none; border-radius:10px; padding:6px; background:#38bdf8; width:100%; cursor:pointer;}
+.skin {background:#0a0f23; border-radius:8px; padding:6px; margin-top:4px; cursor:pointer;}
+.skin.active {background:#22c55e; color:black;}
+.log {text-align:center; font-size:13px; opacity:0.8;}
+.gold {color:#FFD700;} .silver {color:#C0C0C0;} .bronze {color:#CD7F32;}
+.progress {width:100%; background:#1e293b; border-radius:8px; overflow:hidden; margin:4px 0;}
+.progress-bar {height:14px; background:#22c55e; width:0%;}
+.info {margin-top:6px; font-size:14px;}
+</style>
+</head>
+<body>
+<div class="app">
+<h3 style="text-align:center">⛏ Mine Legends Ultimate</h3>
+
+<div class="stats">
+  <div>💰 <span id="coin">0</span></div>
+  <div>⭐ Lv <span id="level">0</span> <button onclick="showLevelInfo()">ℹ️</button></div>
+</div>
+
+<div class="progress"><div id="xpBar" class="progress-bar"></div></div>
+<div class="char" id="char">👷</div>
+<div class="mine" onclick="mine()" id="pick">⛏</div>
+
+<div class="info" id="playerInfo">
+  نام: <span id="playerName"></span><br>
+  Power: <span id="power">1</span><br>
+  XP: <span id="xp">0</span>
+</div>
+
+<div class="tabs">
+  <button onclick="tab('up')">⬆️ Upgrade</button>
+  <button onclick="tab('quest')">📜 Quest</button>
+  <button onclick="tab('item')">💎 Item</button>
+  <button onclick="tab('skin')">🎨 Skin</button>
+  <button onclick="tab('achievement')">🏅 Achievement</button>
+  <button onclick="tab('rank')">🏆 Rank</button>
+  <button onclick="tab('allplayers')">🌐 All Players</button>
+  <button onclick="tab('contact')">📩 Contact</button>
+</div>
+
+<div id="up" class="box active">
+  <div class="card">
+    Power: <span id="power2">1</span>
+    <button onclick="upgrade()">Upgrade (<span id="pCost">10</span>)</button>
+  </div>
+  <div class="card">
+    Auto Mine <button onclick="auto()">Buy (<span id="aCost">50</span>)</button>
+  </div>
+</div>
+
+<div id="quest" class="box"></div>
+<div id="item" class="box"></div>
+
+<div id="skin" class="box">
+  <div class="card">
+    <b>👷 Character</b>
+    <div class="skin active" onclick="setChar('👷',this)">👷 Miner</div>
+    <div class="skin" onclick="buyChar('🧑‍🚀',300,this)">🧑‍🚀 Astronaut (300)</div>
+    <div class="skin" onclick="buyChar('🧙‍♂️',600,this)">🧙‍♂️ Wizard (600)</div>
+    <div class="skin" onclick="buyChar('🧛',800,this)">🧛 Vampire (800)</div>
+  </div>
+  <div class="card">
+    <b>⛏ Pickaxe</b>
+    <div class="skin active" onclick="setPick('⛏',this)">⛏ Default</div>
+    <div class="skin" onclick="buyPick('💎',400,this)">💎 Diamond (400)</div>
+  </div>
+</div>
+
+<div id="achievement" class="box">
+  <div class="card" id="achievements"></div>
+</div>
+
+<div id="rank" class="box">
+  <div class="card">
+    <b>🥇🥈🥉 Top 3 Players</b>
+    <div id="top3"></div>
+    <b>🏆 Top 20 Players</b>
+    <div id="top20"></div>
+  </div>
+</div>
+
+<div id="allplayers" class="box">
+  <div class="card" id="allPlayersList"></div>
+</div>
+
+<div id="contact" class="box">
+  <div class="card">
+    📨 سازنده: <br>
+    <button onclick="window.open('https://t.me/ImMr_Mmd','_blank')">@ImMr_Mmd</button>
+    <br><br>
+    📣 کانال گیم: <br>
+    <button onclick="window.open('https://t.me/Im_Irooni','_blank')">@Im_Irooni</button>
+  </div>
+</div>
+
+<div class="log" id="log">Ready</div>
+</div>
+
+<script>
+// ==== Telegram WebApp ====
+const tg = window.Telegram.WebApp; tg.ready(); tg.expand();
+const beep = f => {let a=new AudioContext(), o=a.createOscillator(); o.frequency.value=f; o.connect(a.destination); o.start(); setTimeout(()=>o.stop(),80)};
+
+// ==== Player Data ====
+let today = new Date().toDateString();
+let d = JSON.parse(localStorage.getItem("mineLegend")) || {
+  coin:0, power:1, level:0, xp:0, pCost:10, aCost:50,
+  name: prompt("اسم پلیر؟") || "Miner",
+  char: "👷", pick: "⛏",
+  chars:["👷"], picks:["⛏"],
+  auto:false, lastQuestDay:"", questClaimed:{}, achievements:[],
+  leaderboard:[], allPlayers:[]
+};
+document.getElementById('playerName').innerText=d.name;
+
+// ==== Tabs ====
+function tab(id){document.querySelectorAll(".box").forEach(b=>b.classList.remove("active")); document.getElementById(id).classList.add("active");}
+
+// ==== Quest System ====
+let quests = [
+  {id:1,name:"Mine 50 Coins",type:"mine",goal:50,reward:20,steps:0,maxSteps:50},
+  {id:2,name:"Upgrade Power 2 times",type:"upgrade",goal:2,reward:30,steps:0,maxSteps:2},
+  {id:3,name:"Buy Auto Mine",type:"auto",goal:1,reward:50,steps:0,maxSteps:1}
+];
+
+function updateQuestsUI(){
+  let div = document.getElementById('quest'); div.innerHTML='';
+  quests.forEach(q=>{
+    let progress = Math.min(q.steps/q.maxSteps*100,100);
+    div.innerHTML += `<div class="card">${q.name} [${q.steps}/${q.maxSteps}] <div class="progress"><div class="progress-bar" style="width:${progress}%"></div></div></div>`;
+  });
+}
+
+function checkQuests(action){
+  quests.forEach(q=>{
+    if(q.type===action && q.steps<q.maxSteps){
+      q.steps++;
+      if(q.steps>=q.maxSteps){
+        d.coin += q.reward;
+        alert(`🎉 Quest Complete: ${q.name} +${q.reward} Coins`);
+      }
+    }
+  });
+  updateQuestsUI();
+  save();
+}
+
+// ==== Mine / Upgrade / Auto ====
+let autoInt=null;
+function mine(){
+  d.coin += d.power;
+  d.xp += d.power;
+  checkQuests("mine");
+  checkLevelUp();
+  beep(300);
+  updateAllPlayers();
+  updateLeaderboard();
+  updatePlayerInfo();
+  save();
+  checkAchievements();
+}
+
+function upgrade(){ 
+  if(d.coin>=d.pCost){ 
+    d.coin-=d.pCost; d.power++; d.pCost*=2; beep(500); 
+    checkQuests("upgrade"); 
+    save(); updateLeaderboard(); updateAllPlayers(); updatePlayerInfo();
+  } 
+}
+function auto(){ 
+  if(!d.auto && d.coin>=d.aCost){ 
+    d.coin-=d.aCost; d.auto=true; 
+    checkQuests("auto"); 
+    if(autoInt===null){
+      autoInt=setInterval(()=>{d.coin+=d.power; d.xp+=d.power; checkLevelUp(); updateAllPlayers(); updateLeaderboard(); updatePlayerInfo(); save(); checkAchievements();},1500);
+    } 
+    save();
+  } 
+}
+
+// ==== Level Up ====
+function checkLevelUp(){
+  let needed = d.level*20+20;
+  document.getElementById('xpBar').style.width = Math.min(d.xp/needed*100,100)+'%';
+  document.getElementById('xp').innerText=d.xp;
+  if(d.xp >= needed){ 
+    d.level++; d.xp=0; beep(900); alert(`🎉 تبریک! شما به Lv ${d.level} رسیدید!`);
+  }
+}
+function showLevelInfo(){let needed=d.level*20+20; alert(`Lv ${d.level+1} نیاز به ${needed} XP دارد`);}
+
+// ==== Player Info Update ====
+function updatePlayerInfo(){ 
+  coin.innerText=d.coin; power.innerText=d.power; level.innerText=d.level; document.getElementById('xp').innerText=d.xp; 
+}
+
+// ==== Skins ====
+function buyChar(c,p,el){ if(d.coin>=p && !d.chars.includes(c)){ d.coin-=p; d.chars.push(c); setChar(c,el); save(); updatePlayerInfo(); } }
+function setChar(c,el){ d.char=c; char.innerText=c; document.querySelectorAll("#skin .card:nth-child(1) .skin").forEach(x=>x.classList.remove("active")); el.classList.add("active"); }
+function buyPick(p,pv,el){ if(d.coin>=pv && !d.picks.includes(p)){ d.coin-=pv; d.picks.push(p); setPick(p,el); save(); updatePlayerInfo(); } }
+function setPick(p,el){ d.pick=p; pick.innerText=p; document.querySelectorAll("#skin .card:nth-child(2) .skin").forEach(x=>x.classList.remove("active")); el.classList.add("active"); }
+
+// ==== Achievements ====
+function checkAchievements(){
+  let ach=d.achievements; let added=false;
+  if(d.coin>=500 && !ach.includes('500 Coins')){ ach.push('500 Coins'); added=true;}
+  if(d.coin>=1000 && !ach.includes('1000 Coins')){ ach.push('1000 Coins'); added=true;}
+  if(d.level>=5 && !ach.includes('Reach Level 5')){ ach.push('Reach Level 5'); added=true;}
+  if(d.power>=5 && !ach.includes('Power 5')){ ach.push('Power 5'); added=true;}
+  if(added) updateAchievementUI();
+}
+function updateAchievementUI(){ let div = document.getElementById('achievements'); div.innerHTML = d.achievements.length===0?'No achievements yet':d.achievements.map(a=>`✅ ${a}`).join('<br>'); }
+
+// ==== Leaderboard ====
+function updateLeaderboard(){
+  let div3=document.getElementById('top3'); let div20=document.getElementById('top20'); div3.innerHTML=''; div20.innerHTML='';
+  let sorted=d.allPlayers.slice().sort((a,b)=>b.coin-b.coin);
+  let top3 = sorted.slice(0,3); let top20 = sorted.slice(0,20);
+  top3.forEach((p,i)=>{ let c=''; if(i===0)c='gold'; else if(i===1)c='silver'; else if(i===2)c='bronze'; div3.innerHTML += `<div class="${c}">${p.name}: ${p.coin}</div>`; });
+  top20.forEach((p,idx)=>{ if(idx<3) return; div20.innerHTML += `<div>${p.name}: ${p.coin}</div>`; });
+}
+
+// ==== All Players ====
+function updateAllPlayers(){
+  d.allPlayers = d.allPlayers.filter(p=>p.name!==d.name);
+  d.allPlayers.push({name:d.name, coin:d.coin});
+  d.allPlayers.sort((a,b)=>b.coin-a.coin);
+  let div = document.getElementById('allPlayersList'); div.innerHTML='';
+  d.allPlayers.forEach(p=>div.innerHTML += `<div>${p.name}: ${p.coin}</div>`);
+  d.leaderboard=d.allPlayers.slice(0,20);
+}
+
+// ==== Save ====
+function save(){ localStorage.setItem("mineLegend",JSON.stringify(d)); updatePlayerInfo(); updateQuestsUI(); updateAchievementUI(); updateLeaderboard(); updateAllPlayers(); }
+
+// ==== Initial Setup ====
+updatePlayerInfo(); updateQuestsUI(); updateAchievementUI(); updateLeaderboard(); updateAllPlayers();
+</script>
+</body>
+</html>
